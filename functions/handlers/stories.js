@@ -43,3 +43,39 @@ exports.postOneStory = (req, res) => {
       console.error(err);
     });
 };
+
+// Fetch one story
+exports.getStory = (req, res) => {
+  let storyData = {};
+  db.doc(`/stories/${req.params.storyId}`)
+    .get()
+    .then((doc) => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+      storyData = doc.data();
+      storyData.storyId = doc.id;
+      return db
+        .collection("comments")
+        .orderBy("createdAt", "desc")
+        .where("storyId", "==", req.params.storyId)
+        .get();
+    })
+    .then((data) => {
+      storyData.comments = [];
+      data.forEach((doc) => {
+        storyData.comments.push(doc.data());
+      });
+      return res.json(storyData);
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ error: err.code });
+    });
+};
+
+// Comment on a story
+exports.commentOnStory = (req, res) => {
+  if (req.body.body.trim() === "")
+    return res.status(400).json({ error: "Comment must not be empty" });
+};
