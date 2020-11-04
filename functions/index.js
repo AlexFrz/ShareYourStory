@@ -17,6 +17,8 @@ const {
   uploadImage,
   addUserDetails,
   getAuthenticatedUser,
+  getUserDetails,
+  // markNotifiationsRead,
 } = require("./handlers/users");
 
 const { db } = require("./utility/admin");
@@ -35,6 +37,8 @@ app.post("/login", login);
 app.post("/user/image", FBAuth, uploadImage);
 app.post("/user", FBAuth, addUserDetails);
 app.get("/user", FBAuth, getAuthenticatedUser);
+app.get("/user/:handle", getUserDetails);
+// app.post("/notifications", FBAuth, markNotifiationsRead);
 
 exports.api = functions.region("europe-west1").https.onRequest(app);
 
@@ -62,6 +66,7 @@ exports.createNotificationOnLike = functions
       })
       .catch((err) => console.error(err));
   });
+
 exports.deleteNotificationOnUnLike = functions
   .region("europe-west1")
   .firestore.document("likes/{id}")
@@ -100,4 +105,59 @@ exports.createNotificationOnComment = functions
         console.error(err);
         return;
       });
+  });
+
+exports.onUserImageChange = functions
+  .region("europe-west1")
+  .firestore.document("/users/{userId}")
+  .onUpdate((change) => {
+    console.log(change.before.data());
+    console.log(change.after.data());
+    if (change.before.data().imageUrl !== change.after.data().imageUrl) {
+      console.log("image has changed");
+      const batch = db.batch();
+      return db
+        .collection("stories")
+        .where("userHandle", "==", change.before.data().handle)
+        .get()
+        .then((data) => {
+          data.forEach((doc) => {
+            const story = db.doc(`/stories/${doc.id}`);
+            batch.update(story, { userImage: change.after.data().imageUrl });
+          });
+          return batch.commit();
+        });
+    } else return true;
+  });
+
+exports.onStoryDelete = functions
+  .region("europe-west1")
+  .firestore.document("/stories/{storyId}")
+  .onDelete((snapshot, context) => {
+    const storyId = context.params.storyId;
+    const batch = cb.batch();
+
+    return db
+      .collection("comments")
+      .where("storyId", "==", storyId)
+      .get()
+      .then((data) => {
+        data.forEach((doc) => {
+          batch.delete(db.doc(`/comments/${doc.id}`));
+        });
+        return db.collection("likes").where("storyId", "==", storyId);
+      })
+      .then((data) => {
+        data.forEach((doc) => {
+          batch.delete(db.doc(`/likes/${doc.id}`));
+        });
+        return db.collection("notifications").where("storyId", "==", storyId);
+      })
+      .then((data) => {
+        data.forEach((doc) => {
+          batch.delete(db.doc(`/notifications/${doc.id}`));
+        });
+        return batch.commit();
+      })
+      .catch((err) => console.error(err));
   });
