@@ -135,8 +135,7 @@ exports.onStoryDelete = functions
   .firestore.document("/stories/{storyId}")
   .onDelete((snapshot, context) => {
     const storyId = context.params.storyId;
-    const batch = cb.batch();
-
+    const batch = db.batch();
     return db
       .collection("comments")
       .where("storyId", "==", storyId)
@@ -145,13 +144,16 @@ exports.onStoryDelete = functions
         data.forEach((doc) => {
           batch.delete(db.doc(`/comments/${doc.id}`));
         });
-        return db.collection("likes").where("storyId", "==", storyId);
+        return db.collection("likes").where("storyId", "==", storyId).get();
       })
       .then((data) => {
         data.forEach((doc) => {
           batch.delete(db.doc(`/likes/${doc.id}`));
         });
-        return db.collection("notifications").where("storyId", "==", storyId);
+        return db
+          .collection("notifications")
+          .where("storyId", "==", storyId)
+          .get();
       })
       .then((data) => {
         data.forEach((doc) => {
