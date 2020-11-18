@@ -10,6 +10,7 @@ exports.getAllStories = (req, res) => {
       data.forEach((doc) => {
         stories.push({
           storyId: doc.id,
+          title: doc.data().title,
           body: doc.data().body,
           userHandle: doc.data().userHandle,
           createdAt: doc.data().createdAt,
@@ -32,6 +33,7 @@ exports.postOneStory = (req, res) => {
   }
 
   const newStory = {
+    title: req.body.title,
     body: req.body.body,
     userHandle: req.user.handle,
     userImage: req.user.imageUrl,

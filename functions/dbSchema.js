@@ -13,6 +13,7 @@ let db = {
   ],
   stories: [
     {
+      title: "That is the title of the story"
       userHandle: "user",
       body: "This is a story",
       createdAt: "2020-10-30T11:25:47.624Z",
